@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Echo Extension</string>
+    <string name="class_path">example.ExampleExtension</string>
+</resources>

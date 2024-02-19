@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-feature android:name="dev.brahmkshatriya.echo.extension" />
+    <application
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name">
+        <meta-data
+            android:name="class"
+            android:value="@string/class_path" />
+    </application>
+</manifest>
