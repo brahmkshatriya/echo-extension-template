@@ -44,9 +44,9 @@ android {
 
 
 dependencies {
-    compileOnly("com.github.brahmkshatriya:echo-common:main-SNAPSHOT")
+    compileOnly("com.github.brahmkshatriya:echo:e10aee68de")
 
     testImplementation("androidx.paging:paging-runtime-ktx:3.2.1")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("com.github.brahmkshatriya:echo-common:main-SNAPSHOT")
+    testImplementation("com.github.brahmkshatriya:echo:e10aee68de")
 }

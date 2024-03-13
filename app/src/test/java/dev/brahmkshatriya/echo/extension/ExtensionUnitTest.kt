@@ -8,6 +8,7 @@ import dev.brahmkshatriya.echo.common.clients.TrackClient
 import dev.brahmkshatriya.echo.common.models.EchoMediaItem
 import dev.brahmkshatriya.echo.common.models.MediaItemsContainer
 import dev.brahmkshatriya.echo.common.models.Track
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -26,7 +27,7 @@ class ExtensionUnitTest {
     fun testMetadata() = testIn("Testing Extension Metadata") {
         if (extension !is ExtensionClient)
             error("ExtensionClient is not implemented")
-        val metadata = extension.getMetadata()
+        val metadata = extension.metadata
         println(metadata)
     }
 
@@ -39,7 +40,8 @@ class ExtensionUnitTest {
     fun testHomeFeed() = testIn("Testing Home Feed") {
         if (extension !is HomeFeedClient)
             error("HomeFeedClient is not implemented")
-        val feed = extension.getHomeFeed(null).first()
+        val genre = MutableStateFlow<String?>(null)
+        val feed = extension.getHomeFeed(genre).first()
         differ.submitData(feed)
         differ.snapshot().items.forEach {
             println(it)
@@ -50,7 +52,9 @@ class ExtensionUnitTest {
     fun testHomeFeedWithGenre() = testIn("Testing Home Feed with Genre") {
         if (extension !is HomeFeedClient)
             error("HomeFeedClient is not implemented")
-        val genre = extension.getHomeGenres().firstOrNull()
+        val genre = MutableStateFlow(
+            extension.getHomeGenres().firstOrNull()
+        )
         val feed = extension.getHomeFeed(genre).first()
         differ.submitData(feed)
         differ.snapshot().items.forEach {
