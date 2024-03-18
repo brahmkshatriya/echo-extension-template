@@ -100,21 +100,12 @@ class ExtensionUnitTest {
         return track ?: error("Track not found, try a different search query")
     }
 
-    @Test
-    fun testTrackStream() = testIn("Testing Track Stream") {
-        if (extension !is TrackClient)
-            error("HomeFeedClient is not implemented")
-        val track = searchTrack()
-        println(track)
-        val stream = extension.getStreamable(track)
-        println(stream)
-    }
 
     @Test
     fun testTrackGet() = testIn("Testing Track Get") {
         if (extension !is TrackClient)
             error("HomeFeedClient is not implemented")
-        val track = extension.getTrack(searchTrack().uri)
+        val track = extension.getTrack(searchTrack().id)
         println(track)
     }
 

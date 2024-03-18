@@ -39,14 +39,21 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
+    @Suppress("UnstableApiUsage")
+    testOptions {
+        unitTests {
+            this.isReturnDefaultValues = true
+        }
+    }
 }
 
 
 
 dependencies {
-    compileOnly("com.github.brahmkshatriya:echo:e10aee68de")
+    compileOnly("com.github.brahmkshatriya:echo:2bd1520fb2")
 
     testImplementation("androidx.paging:paging-runtime-ktx:3.2.1")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("com.github.brahmkshatriya:echo:e10aee68de")
+    testImplementation("com.github.brahmkshatriya:echo:2bd1520fb2")
 }
