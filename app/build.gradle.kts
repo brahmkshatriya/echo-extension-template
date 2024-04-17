@@ -19,7 +19,7 @@ android {
         versionName = "1.0"
 
         resValue("string", "app_name", "Echo : $extensionName Extension")
-        resValue("string", "class_path", "$applicationId.$extensionClass")
+        resValue("string", "class_path", "$namespace.$extensionClass")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -51,9 +51,10 @@ android {
 
 
 dependencies {
-    compileOnly("com.github.brahmkshatriya:echo:2bd1520fb2")
+    compileOnly("com.github.brahmkshatriya:echo:8f951e48af")
 
-    testImplementation("androidx.paging:paging-runtime-ktx:3.2.1")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("com.github.brahmkshatriya:echo:2bd1520fb2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1-Beta")
+    testImplementation("androidx.paging:paging-runtime-ktx:3.2.1")
+    testImplementation("com.github.brahmkshatriya:echo:8f951e48af")
 }
