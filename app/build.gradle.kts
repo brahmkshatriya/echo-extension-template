@@ -60,13 +60,11 @@ android {
     }
 }
 
-
-
 dependencies {
     val libVersion = "728a3edac8"
     compileOnly("com.github.brahmkshatriya:echo:$libVersion")
-    implementation("com.github.yvasyliev:deezer-api:2.1.2")
 
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jsoup:jsoup:1.16.1")
 
@@ -75,7 +73,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.3.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.3.1")
     implementation("androidx.room:room-ktx:2.3.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.2.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.5.0")
     implementation("androidx.room:room-runtime:2.3.0")
     annotationProcessor("androidx.room:room-compiler:2.3.0")
