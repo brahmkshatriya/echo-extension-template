@@ -7,6 +7,7 @@ import dev.brahmkshatriya.echo.common.clients.HomeFeedClient
 import dev.brahmkshatriya.echo.common.clients.LoginClient
 import dev.brahmkshatriya.echo.common.clients.PlaylistClient
 import dev.brahmkshatriya.echo.common.clients.TrackClient
+import dev.brahmkshatriya.echo.common.exceptions.LoginRequiredException
 import dev.brahmkshatriya.echo.common.helpers.PagedData
 import dev.brahmkshatriya.echo.common.models.Album
 import dev.brahmkshatriya.echo.common.models.EchoMediaItem.Companion.toMediaItem
@@ -15,22 +16,33 @@ import dev.brahmkshatriya.echo.common.models.Playlist
 import dev.brahmkshatriya.echo.common.models.Request
 import dev.brahmkshatriya.echo.common.models.Request.Companion.toRequest
 import dev.brahmkshatriya.echo.common.models.Streamable
-import dev.brahmkshatriya.echo.common.models.StreamableAudio.Companion.toAudio
+import dev.brahmkshatriya.echo.common.models.StreamableAudio
 import dev.brahmkshatriya.echo.common.models.StreamableVideo
 import dev.brahmkshatriya.echo.common.models.Tab
 import dev.brahmkshatriya.echo.common.models.Track
 import dev.brahmkshatriya.echo.common.models.User
 import dev.brahmkshatriya.echo.common.settings.Setting
 import dev.brahmkshatriya.echo.common.settings.Settings
-import dev.brahmkshatriya.echo.extension.network.MultiStreamServer
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.net.ServerSocket
+import okhttp3.OkHttpClient
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, AlbumClient, PlaylistClient, LoginClient.WebView {
 
@@ -72,7 +84,7 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, AlbumClien
 
     override suspend fun getHomeTabs(): List<Tab> {
         if(arl == null) {
-            throw Exception("Please login to Deezer!!")
+            throw LoginRequiredException("", "Deezer")
         } else {
             val resultObject = DeezerApi(arl!!, sid!!, token!!, userId!!).homePage()
             val name = resultObject["title"]!!.jsonPrimitive.content
@@ -104,7 +116,65 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, AlbumClien
     }
     //<============= Play =============>
 
-    override suspend fun getStreamableAudio(streamable: Streamable) = streamable.id.toAudio()
+    private val client = OkHttpClient()
+
+    override suspend fun getStreamableAudio(streamable: Streamable) = getByteStreamAudio(streamable)
+
+    private fun getByteStreamAudio(streamable: Streamable): StreamableAudio {
+        val url = streamable.id
+        val contentLength = getContentLength(url)
+        val key = streamable.extra["key"]!!
+
+        val request = okhttp3.Request.Builder().url(url).build()
+        var decChunk = ByteArray(0)
+        with(client.newCall(request).execute()) {
+            val byteStream = this.body?.byteStream()
+
+            // Read the entire byte stream into memory
+            val completeStream = ByteArrayOutputStream()
+            val buffer = ByteArray(16384)
+            var bytesRead: Int
+            while (byteStream?.read(buffer).also { bytesRead = it ?: -1 } != -1) {
+                completeStream.write(buffer, 0, bytesRead)
+            }
+
+            // Decrypt the complete stream
+            val completeStreamBytes = completeStream.toByteArray()
+
+            var place = 0
+
+            while (place < completeStreamBytes.size) {
+                val remainingBytes = completeStreamBytes.size - place
+                val chunkSize = if (remainingBytes > 2048 * 3) 2048 * 3 else remainingBytes
+                val decryptingChunk = completeStreamBytes.copyOfRange(place, place + chunkSize)
+                place += chunkSize
+
+                var decryptedChunk = ByteArray(0)
+                if (decryptingChunk.size > 2048) {
+                    decryptedChunk = Utils.decryptBlowfish(decryptingChunk.copyOfRange(0, 2048), key)
+                    decryptedChunk += decryptingChunk.copyOfRange(2048, decryptingChunk.size)
+                }
+                decChunk += decryptedChunk
+            }
+        }
+
+        return StreamableAudio.ByteStreamAudio(
+            stream = decChunk.inputStream(),
+            totalBytes = contentLength
+        )
+    }
+
+
+
+    private fun getContentLength(url: String): Long {
+        var totalLength = 0L
+        val request = okhttp3.Request.Builder().url(url).head().build()
+        val response = client.newCall(request).execute()
+        totalLength += response.header("Content-Length")?.toLong() ?: 0L
+        response.close()
+        return totalLength
+    }
+
     override suspend fun getStreamableVideo(streamable: Streamable) =
         StreamableVideo(Request(streamable.id), looping = false, crop = false)
 
@@ -112,36 +182,22 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, AlbumClien
         val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!, licenseToken!!).getMediaUrl(track)
         val dataObject = jsonObject["data"]!!.jsonArray.first().jsonObject
         val mediaObject = dataObject["media"]!!.jsonArray.first().jsonObject
-        val sourcesArray = mediaObject["sources"]!!.jsonArray
-        val urls = mutableListOf<String>()
-        sourcesArray.mapIndexed { index, jsonElement ->
-            when (index) {
-                0 -> urls.add(jsonElement.jsonObject["url"]!!.jsonPrimitive.content)
-                1 -> urls.add(jsonElement.jsonObject["url"]!!.jsonPrimitive.content)
-                else -> {}
-            }
-        }
-        urls.forEach {
-            Log.d("homePage", it)
-        }
+        val sourcesObject = mediaObject["sources"]!!.jsonArray[1]
+        val url = sourcesObject.jsonObject["url"]!!.jsonPrimitive.content
+        val key = Utils.createBlowfishKey(trackId = track.id)
 
-        /*val trackObject = DeezerApi(arl!!, sid!!, token!!, userId!!).track(track)
-        val resultObject = trackObject["results"]!!.jsonObject
-        val trackDataObject = resultObject["data"]!!.jsonArray.first().jsonObject*/
-
-        val serverSocket = ServerSocket(0)
-        val port = serverSocket.localPort
-        serverSocket.close()
-        val server = MultiStreamServer(urls ,port = port)
-        server.start()
         Track(
             id = track.id,
             title = track.title,
             cover = track.cover,
             audioStreamables = listOf(
                 Streamable(
-                    id = "http://127.0.0.1:$port",
-                    quality = 0),
+                    id = url,
+                    quality = 0,
+                    extra = mapOf(
+                        "key" to key
+                    )
+                )
             )
         )
     }
