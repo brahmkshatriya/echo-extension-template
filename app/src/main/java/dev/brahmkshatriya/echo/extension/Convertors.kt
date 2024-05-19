@@ -7,6 +7,8 @@ import dev.brahmkshatriya.echo.common.models.ImageHolder.Companion.toImageHolder
 import dev.brahmkshatriya.echo.common.models.MediaItemsContainer
 import dev.brahmkshatriya.echo.common.models.Playlist
 import dev.brahmkshatriya.echo.common.models.Track
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -22,15 +24,28 @@ fun JsonObject.toMediaItemsContainer(
     return MediaItemsContainer.Category(
         title = name ?: "Unknown",
         list = itemsArray.mapNotNull { item ->
-            item.jsonObject.toEchoMediaPlaylistItem(api)
+            item.jsonObject.toEchoMediaItem(api)
         }
     )
 }
 
-fun JsonObject.toEchoMediaPlaylistItem(
+fun JsonArray.toMediaItemsContainer(
+    api: DeezerApi = DeezerApi(),
+    name: String?
+): MediaItemsContainer {
+    val itemsArray = jsonArray
+    return MediaItemsContainer.Category(
+        title = name ?: "Unknown",
+        list = itemsArray.mapNotNull { item ->
+            item.jsonObject.toEchoMediaItem(api)
+        }
+    )
+}
+
+fun JsonElement.toEchoMediaItem(
     api: DeezerApi
 ): EchoMediaItem? {
-    val data = jsonObject["data"]!!.jsonObject
+    val data = jsonObject["data"]?.jsonObject ?: jsonObject
     val type = data["__TYPE__"]!!.jsonPrimitive.content
     return when {
         type.contains("playlist") -> EchoMediaItem.Lists.PlaylistItem(toPlaylist(api))
@@ -42,8 +57,8 @@ fun JsonObject.toEchoMediaPlaylistItem(
 
 
 
-fun JsonObject.toAlbum(): Album {
-    val data = jsonObject["data"]?.jsonObject ?: jsonObject["DATA"]!!.jsonObject
+fun JsonElement.toAlbum(): Album {
+    val data = jsonObject["data"]?.jsonObject ?: jsonObject["DATA"]?.jsonObject ?: jsonObject
     return Album(
         id = data["ALB_ID"]?.jsonPrimitive?.content ?: "",
         title = data["ALB_TITLE"]?.jsonPrimitive?.content ?: "",
@@ -53,7 +68,7 @@ fun JsonObject.toAlbum(): Album {
     )
 }
 
-fun JsonObject.toTrack(): Track {
+fun JsonElement.toTrack(): Track {
     val data = jsonObject["data"]?.jsonObject ?: jsonObject
     return Track(
         id = data["SNG_ID"]!!.jsonPrimitive.content,
@@ -66,12 +81,13 @@ fun JsonObject.toTrack(): Track {
     )
 }
 
-fun JsonObject.toPlaylist(api: DeezerApi): Playlist {
-    val data = jsonObject["data"]?.jsonObject ?: jsonObject["DATA"]!!.jsonObject
+fun JsonElement.toPlaylist(api: DeezerApi): Playlist {
+    val data = jsonObject["data"]?.jsonObject ?: jsonObject["DATA"]?.jsonObject ?: jsonObject
+    val type = jsonObject["PICTURE_TYPE"]?.jsonPrimitive?.content
     return Playlist(
         id = data["PLAYLIST_ID"]?.jsonPrimitive?.content ?: "",
         title = data["TITLE"]?.jsonPrimitive?.content ?: "",
-        cover = getCover(jsonObject),
+        cover = getCover(jsonObject, type),
         description = data["DESCRIPTION"]?.jsonPrimitive?.content ?: "",
         subtitle = jsonObject["subtitle"]?.jsonPrimitive?.content ?: "",
         isEditable = data["PARENT_USER_ID"]!!.jsonPrimitive.content == api.userId,
@@ -79,24 +95,30 @@ fun JsonObject.toPlaylist(api: DeezerApi): Playlist {
     )
 }
 
-fun getCover(jsonObject: JsonObject): ImageHolder {
-    if(jsonObject["pictures"]?.jsonArray != null) {
-        val pictureArray = jsonObject["pictures"]!!.jsonArray
-        val picObject = pictureArray.first().jsonObject
-        val md5 = picObject["md5"]!!.jsonPrimitive.content
-        val type = picObject["type"]!!.jsonPrimitive.content
-        val url = "https://e-cdns-images.dzcdn.net/images/$type/$md5/264x264-000000-80-0-0.jpg"
-        return url.toImageHolder()
-    } else if(jsonObject["DATA"]?.jsonObject != null) {
-        val dataObject = jsonObject["DATA"]!!.jsonObject
-        val md5 = dataObject["PLAYLIST_PICTURE"]?.jsonPrimitive?.content
-            ?: dataObject["ALB_PICTURE"]?.jsonPrimitive?.content ?: ""
-        val type = dataObject["PICTURE_TYPE"]?.jsonPrimitive?.content ?: "cover"
+fun getCover(jsonObject: JsonObject, type: String? = null): ImageHolder {
+    if(type != null) {
+        val md5 = jsonObject["PLAYLIST_PICTURE"]!!.jsonPrimitive.content
         val url = "https://e-cdns-images.dzcdn.net/images/$type/$md5/264x264-000000-80-0-0.jpg"
         return url.toImageHolder()
     } else {
-        val md5 = jsonObject["ALB_PICTURE"]?.jsonPrimitive?.content ?: ""
-        val url = "https://e-cdns-images.dzcdn.net/images/cover/$md5/264x264-000000-80-0-0.jpg"
-        return url.toImageHolder()
+        if (jsonObject["pictures"]?.jsonArray != null) {
+            val pictureArray = jsonObject["pictures"]!!.jsonArray
+            val picObject = pictureArray.first().jsonObject
+            val md5 = picObject["md5"]!!.jsonPrimitive.content
+            val type = picObject["type"]!!.jsonPrimitive.content
+            val url = "https://e-cdns-images.dzcdn.net/images/$type/$md5/264x264-000000-80-0-0.jpg"
+            return url.toImageHolder()
+        } else if (jsonObject["DATA"]?.jsonObject != null) {
+            val dataObject = jsonObject["DATA"]!!.jsonObject
+            val md5 = dataObject["PLAYLIST_PICTURE"]?.jsonPrimitive?.content
+                ?: dataObject["ALB_PICTURE"]?.jsonPrimitive?.content ?: ""
+            val type = dataObject["PICTURE_TYPE"]?.jsonPrimitive?.content ?: "cover"
+            val url = "https://e-cdns-images.dzcdn.net/images/$type/$md5/264x264-000000-80-0-0.jpg"
+            return url.toImageHolder()
+        } else {
+            val md5 = jsonObject["ALB_PICTURE"]?.jsonPrimitive?.content ?: ""
+            val url = "https://e-cdns-images.dzcdn.net/images/cover/$md5/264x264-000000-80-0-0.jpg"
+            return url.toImageHolder()
+        }
     }
 }

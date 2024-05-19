@@ -1,6 +1,7 @@
 package dev.brahmkshatriya.echo.extension
 
 import dev.brahmkshatriya.echo.common.models.Album
+import dev.brahmkshatriya.echo.common.models.Artist
 import dev.brahmkshatriya.echo.common.models.ImageHolder.Companion.toImageHolder
 import dev.brahmkshatriya.echo.common.models.Playlist
 import dev.brahmkshatriya.echo.common.models.Track
@@ -28,11 +29,11 @@ class Settings {
 }
 
 class DeezerApi(
-    private val arl: String = "",
-    private val sid: String = "",
-    private val token: String = "",
-    val userId: String = "",
-    private val licenseToken: String = "",
+    private var arl: String = "",
+    private var sid: String = "",
+    private var token: String = "",
+    var userId: String = "",
+    private var licenseToken: String = "",
     private var userName: String? = null,
     private var favoritesPlaylistId: String = ""
 ) {
@@ -109,15 +110,6 @@ class DeezerApi(
         val responseBody = response.body?.string()
         val body = responseBody.toString()
 
-        // Grab SID
-        /*if (method == "deezer.getUserData") {
-            response.headers("Set-Cookie").forEach { cookie ->
-                if (cookie.startsWith("sid=")) {
-                    sid = cookie.split("=")[1]
-                }
-            }
-        }*/
-
         body
     }
 
@@ -174,7 +166,6 @@ class DeezerApi(
         headersBuilder.add("Connection", "Keep-alive")
         headersBuilder.add("Content-Type", "application/json; charset=utf-8")
         headersBuilder.add("Cookie", "arl=$arl&sid=$sid")
-        //headersBuilder.add("Host", "media.deezer.com")
         headersBuilder.add("Host", "media.deezer.com")
         headersBuilder.add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
         val headers = headersBuilder.build()
@@ -235,11 +226,47 @@ class DeezerApi(
         jObject
     }
 
+    suspend fun search(query: String): JsonObject {
+        val jsonData = callApi(
+            method = "deezer.pageSearch",
+            params = mapOf(
+                "nb" to 128,
+                "query" to query,
+                "start" to 0
+            )
+        )
+        val jObject = json.decodeFromString<JsonObject>(jsonData)
+        return jObject
+    }
+
+    suspend fun searchSuggestions(query: String): JsonObject {
+        val jsonData = callApi(
+            method = "search_getSuggestedQueries",
+            params = mapOf(
+                "QUERY" to query
+            )
+        )
+        val jObject = json.decodeFromString<JsonObject>(jsonData)
+        return jObject
+    }
+
     suspend fun track(track: Track): JsonObject {
         val jsonData = callApi(
             method = "song.getListData",
             params = mapOf(
                 "sng_ids" to arrayOf(track.id)
+            )
+        )
+        val jObject = json.decodeFromString<JsonObject>(jsonData)
+        return jObject
+    }
+
+    suspend fun artist(artist: Artist): JsonObject {
+        val jsonData = callApi(
+            method = "song.getListData",
+            params = mapOf(
+                "art_id" to artist.id,
+                "lang" to settings.deezerLanguage
             )
         )
         val jObject = json.decodeFromString<JsonObject>(jsonData)
@@ -304,7 +331,7 @@ class DeezerApi(
         val jsonData = callApi(
             method = "page.get",
             gatewayInput = """
-                {"PAGE":"home","VERSION":"2.5","SUPPORT":{"ads":[],"deeplink-list":["deeplink"],"event-card":["live-event"],"grid-preview-one":["album","artist","artistLineUp","channel","livestream","flow","playlist","radio","show","smarttracklist","track","user","video-link","external-link"],"grid-preview-two":["album","artist","artistLineUp","channel","livestream","flow","playlist","radio","show","smarttracklist","track","user","video-link","external-link"],"grid":["album","artist","artistLineUp","channel","livestream","flow","playlist","radio","show","smarttracklist","track","user","video-link","external-link"],"horizontal-grid":["album","artist","artistLineUp","channel","livestream","flow","playlist","radio","show","smarttracklist","track","user","video-link","external-link"],"horizontal-list":["track","song"],"item-highlight":["radio"],"large-card":["album","external-link","playlist","show","video-link"],"list":["episode"],"message":["call_onboarding"],"mini-banner":["external-link"],"slideshow":["album","artist","channel","external-link","flow","livestream","playlist","show","smarttracklist","user","video-link"],"small-horizontal-grid":["flow"],"long-card-horizontal-grid":["album","artist","artistLineUp","channel","livestream","flow","playlist","radio","show","smarttracklist","track","user","video-link","external-link"],"filterable-grid":["flow"]},"LANG":"en","OPTIONS":["deeplink_newsandentertainment","deeplink_subscribeoffer"]}
+                {"PAGE":"home","VERSION":"2.5","SUPPORT":{"ads":[],"deeplink-list":["deeplink"],"event-card":["live-event"],"grid-preview-one":["album","artist","artistLineUp","channel","livestream","flow","playlist","radio","show","smarttracklist","track","user","video-link","external-link"],"grid-preview-two":["album","artist","artistLineUp","channel","livestream","flow","playlist","radio","show","smarttracklist","track","user","video-link","external-link"],"grid":["album","artist","artistLineUp","channel","livestream","flow","playlist","radio","show","smarttracklist","track","user","video-link","external-link"],"horizontal-grid":["album","artist","artistLineUp","channel","livestream","flow","playlist","radio","show","smarttracklist","track","user","video-link","external-link"],"horizontal-list":["track","song"],"item-highlight":["radio"],"large-card":["album","external-link","playlist","show","video-link"],"list":["episode"],"mini-banner":["external-link"],"slideshow":["album","artist","channel","external-link","flow","livestream","playlist","show","smarttracklist","user","video-link"],"small-horizontal-grid":["flow"],"long-card-horizontal-grid":["album","artist","artistLineUp","channel","livestream","flow","playlist","radio","show","smarttracklist","track","user","video-link","external-link"],"filterable-grid":["flow"]},"LANG":"en","OPTIONS":["deeplink_newsandentertainment","deeplink_subscribeoffer"]}
             """.trimIndent()
         )
         val jObject = json.decodeFromString<JsonObject>(jsonData)

@@ -1,10 +1,7 @@
 package dev.brahmkshatriya.echo.extension
 
-import android.webkit.URLUtil
-import java.io.IOException
+import okhttp3.OkHttpClient
 import java.math.BigInteger
-import java.net.HttpURLConnection
-import java.net.URL
 import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
@@ -13,19 +10,6 @@ import javax.crypto.spec.SecretKeySpec
 object Utils {
     private const val secret = "g4el58wc0zvf9na1"
     private val secretIvSpec = IvParameterSpec(byteArrayOf(0,1,2,3,4,5,6,7))
-
-    @Throws(IOException::class)
-    fun getFinalURL(url: String): String {
-        val con: HttpURLConnection = URL(url).openConnection() as HttpURLConnection
-        con.instanceFollowRedirects = false
-        con.connect()
-        con.inputStream
-        if (con.responseCode == HttpURLConnection.HTTP_MOVED_PERM || con.responseCode == HttpURLConnection.HTTP_MOVED_TEMP) {
-            val redirectUrl: String = con.getHeaderField("Location")
-            if (URLUtil.isValidUrl(redirectUrl)) return getFinalURL(redirectUrl)
-        }
-        return url
-    }
 
     private fun bitwiseXor(firstVal: Char, secondVal: Char, thirdVal: Char): Char {
         return (BigInteger(byteArrayOf(firstVal.code.toByte())) xor
@@ -52,15 +36,13 @@ object Utils {
         return thisTrackCipher.update(chunk)
     }
 
-    fun decryptBlowfishFinal(chunk: ByteArray, blowfishKey: String, isFinal: Boolean): ByteArray {
-        val secretKeySpec = SecretKeySpec(blowfishKey.toByteArray(), "Blowfish")
-        val thisTrackCipher = Cipher.getInstance("BLOWFISH/CBC/NoPadding")
-        thisTrackCipher.init(Cipher.DECRYPT_MODE, secretKeySpec, secretIvSpec)
-        return if (isFinal) {
-            thisTrackCipher.doFinal(chunk)
-        } else {
-            thisTrackCipher.update(chunk)
-        }
+    fun getContentLength(url: String, client: OkHttpClient): Long {
+        var totalLength = 0L
+        val request = okhttp3.Request.Builder().url(url).head().build()
+        val response = client.newCall(request).execute()
+        totalLength += response.header("Content-Length")?.toLong() ?: 0L
+        response.close()
+        return totalLength
     }
 }
 

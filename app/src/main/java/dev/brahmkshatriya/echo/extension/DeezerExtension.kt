@@ -6,6 +6,7 @@ import dev.brahmkshatriya.echo.common.clients.ExtensionClient
 import dev.brahmkshatriya.echo.common.clients.HomeFeedClient
 import dev.brahmkshatriya.echo.common.clients.LoginClient
 import dev.brahmkshatriya.echo.common.clients.PlaylistClient
+import dev.brahmkshatriya.echo.common.clients.SearchClient
 import dev.brahmkshatriya.echo.common.clients.TrackClient
 import dev.brahmkshatriya.echo.common.exceptions.LoginRequiredException
 import dev.brahmkshatriya.echo.common.helpers.PagedData
@@ -13,38 +14,33 @@ import dev.brahmkshatriya.echo.common.models.Album
 import dev.brahmkshatriya.echo.common.models.EchoMediaItem.Companion.toMediaItem
 import dev.brahmkshatriya.echo.common.models.MediaItemsContainer
 import dev.brahmkshatriya.echo.common.models.Playlist
-import dev.brahmkshatriya.echo.common.models.Request
+import dev.brahmkshatriya.echo.common.models.QuickSearchItem
 import dev.brahmkshatriya.echo.common.models.Request.Companion.toRequest
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.models.StreamableAudio
-import dev.brahmkshatriya.echo.common.models.StreamableVideo
 import dev.brahmkshatriya.echo.common.models.Tab
 import dev.brahmkshatriya.echo.common.models.Track
 import dev.brahmkshatriya.echo.common.models.User
 import dev.brahmkshatriya.echo.common.settings.Setting
 import dev.brahmkshatriya.echo.common.settings.Settings
-import kotlinx.coroutines.DelicateCoroutinesApi
+import dev.brahmkshatriya.echo.extension.Utils.getContentLength
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
-import java.io.ByteArrayInputStream
+import okhttp3.Request
+import org.apache.http.conn.ConnectTimeoutException
 import java.io.ByteArrayOutputStream
-import java.io.PipedInputStream
-import java.io.PipedOutputStream
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
+import java.util.Locale
 
-class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, AlbumClient, PlaylistClient, LoginClient.WebView {
+class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, SearchClient, AlbumClient, PlaylistClient, LoginClient.WebView {
 
     private val json = Json {
         isLenient = true
@@ -104,57 +100,136 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, AlbumClien
     override fun getHomeFeed(tab: Tab?): PagedData<MediaItemsContainer> = PagedData.Single {
         val dataList = mutableListOf<MediaItemsContainer>()
         val jsonData = json.decodeFromString<JsonArray>(tab?.extras!!["sections"].toString())
-        //val data = jsonData[2].jsonObject.toMediaItemsContainer(name = name)
-         jsonData.mapIndexed { index, section ->
-            if(index == 1 || index == 2 || index == 6) {
-                val name = section.jsonObject["title"]!!.jsonPrimitive.content
+        jsonData.map { section ->
+            val name = section.jsonObject["title"]!!.jsonPrimitive.content
+            // Just for the time being until everything is implemented
+            if (name == "Continue streaming" || name == "Mixes inspired by..." || name == "Playlists you'll love") {
                 val data = section.jsonObject.toMediaItemsContainer(name = name)
                 dataList.add(data)
             }
         }
         dataList
     }
+
+    //<============= Search =============>
+
+    override suspend fun quickSearch(query: String?) = query?.run {
+        try {
+            val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!).searchSuggestions(query)
+            val resultObject = jsonObject["results"]!!.jsonObject
+            val suggestionArray = resultObject["SUGGESTION"]!!.jsonArray
+            suggestionArray.map { item ->
+                val queryItem = item.jsonObject["QUERY"]!!.jsonPrimitive.content
+                QuickSearchItem.SearchQueryItem(queryItem, false)
+            }
+        } catch (e: NullPointerException) {
+            null
+        } catch (e: ConnectTimeoutException) {
+            null
+        }
+    } ?: listOf()
+
+    private var oldSearch: Pair<String, List<MediaItemsContainer>>? = null
+    override fun searchFeed(query: String?, tab: Tab?) = PagedData.Single {
+        query ?: return@Single emptyList()
+        val old = oldSearch?.takeIf {
+            it.first == query && (tab == null || tab.id == "All")
+        }?.second
+        if (old != null) return@Single old
+
+        var list = listOf<MediaItemsContainer>()
+        if(tab?.id != "TOP_RESULT") {
+            val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!).search(query)
+            val resultObject = jsonObject["results"]!!.jsonObject
+            val tabObject = resultObject[tab?.id]!!.jsonObject
+            val dataArray = tabObject["data"]!!.jsonArray
+
+            val itemArray =  dataArray.mapNotNull { item ->
+                item.toEchoMediaItem(DeezerApi(arl!!, sid!!, token!!, userId!!))?.toMediaItemsContainer()
+            }
+            list = itemArray
+        }
+        list
+    }
+
+    override suspend fun searchTabs(query: String?): List<Tab> {
+        query ?: return emptyList()
+        val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!).search(query)
+        val resultObject = jsonObject["results"]!!.jsonObject
+        val orderObject = resultObject["ORDER"]!!.jsonArray
+
+        val tabs = orderObject.mapNotNull {
+            val tab = it.jsonPrimitive.content
+            Tab(
+                id = tab,
+                name = tab.lowercase().capitalize(Locale.ROOT)
+            )
+        }.filter {
+            it.id != "TOP_RESULT" &&
+            it.id != "FLOW_CONFIG"
+        }
+
+        oldSearch = query to tabs.map { tab ->
+            val name = tab.id
+            Log.d("saerchTabs", name)
+            val tabObject = resultObject[name]!!.jsonObject
+            val dataArray = tabObject["data"]!!.jsonArray
+            dataArray.toMediaItemsContainer(DeezerApi(arl!!, sid!!, token!!, userId!!), name.lowercase().capitalize(
+                Locale.ROOT))
+        }
+        return listOf(Tab("All", "All")) + tabs
+    }
+
     //<============= Play =============>
 
     private val client = OkHttpClient()
 
     override suspend fun getStreamableAudio(streamable: Streamable) = getByteStreamAudio(streamable)
 
+
     private fun getByteStreamAudio(streamable: Streamable): StreamableAudio {
         val url = streamable.id
-        val contentLength = getContentLength(url)
+        val contentLength = getContentLength(url, client)
         val key = streamable.extra["key"]!!
 
-        val request = okhttp3.Request.Builder().url(url).build()
+        val request = Request.Builder().url(url).build()
         var decChunk = ByteArray(0)
-        with(client.newCall(request).execute()) {
-            val byteStream = this.body?.byteStream()
 
-            // Read the entire byte stream into memory
-            val completeStream = ByteArrayOutputStream()
-            val buffer = ByteArray(16384)
-            var bytesRead: Int
-            while (byteStream?.read(buffer).also { bytesRead = it ?: -1 } != -1) {
-                completeStream.write(buffer, 0, bytesRead)
-            }
+        runBlocking {
+            withContext(Dispatchers.IO) {
+                val response = client.newCall(request).execute()
+                val byteStream = response.body?.byteStream()
 
-            // Decrypt the complete stream
-            val completeStreamBytes = completeStream.toByteArray()
-
-            var place = 0
-
-            while (place < completeStreamBytes.size) {
-                val remainingBytes = completeStreamBytes.size - place
-                val chunkSize = if (remainingBytes > 2048 * 3) 2048 * 3 else remainingBytes
-                val decryptingChunk = completeStreamBytes.copyOfRange(place, place + chunkSize)
-                place += chunkSize
-
-                var decryptedChunk = ByteArray(0)
-                if (decryptingChunk.size > 2048) {
-                    decryptedChunk = Utils.decryptBlowfish(decryptingChunk.copyOfRange(0, 2048), key)
-                    decryptedChunk += decryptingChunk.copyOfRange(2048, decryptingChunk.size)
+                // Read the entire byte stream into memory
+                val completeStream = ByteArrayOutputStream()
+                val buffer = ByteArray(256 * 1024)
+                var bytesRead: Int
+                while (byteStream?.read(buffer).also { bytesRead = it ?: -1 } != -1) {
+                    completeStream.write(buffer, 0, bytesRead)
                 }
-                decChunk += decryptedChunk
+
+                // Ensure complete stream is read
+                val completeStreamBytes = completeStream.toByteArray()
+                println("Total bytes read: ${completeStreamBytes.size}")
+
+                // Determine chunk size based on decryption block size
+                val decryptionBlockSize = 2048 * 3
+                val numChunks = (completeStreamBytes.size + decryptionBlockSize - 1) / decryptionBlockSize
+                println("Number of chunks: $numChunks")
+
+                // Decrypt the chunks concurrently
+                val deferredChunks = (0 until numChunks).map { i ->
+                    val start = i * decryptionBlockSize
+                    val end = minOf((i + 1) * decryptionBlockSize, completeStreamBytes.size)
+                    println("Chunk $i: start $start, end $end")
+                    async { decryptStreamChunk(completeStreamBytes.copyOfRange(start, end), key) }
+                }
+
+                // Wait for all decryption tasks to complete and concatenate the results
+                deferredChunks.forEach { deferred ->
+                    decChunk += deferred.await()
+                }
+                response.close()
             }
         }
 
@@ -164,19 +239,31 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, AlbumClien
         )
     }
 
+    private fun decryptStreamChunk(chunk: ByteArray, key: String): ByteArray {
+        val decryptedStream = ByteArrayOutputStream()
+        var place = 0
 
+        while (place < chunk.size) {
+            val remainingBytes = chunk.size - place
+            val currentChunkSize = if (remainingBytes > 2048 * 3) 2048 * 3 else remainingBytes
+            val decryptingChunk = chunk.copyOfRange(place, place + currentChunkSize)
+            place += currentChunkSize
 
-    private fun getContentLength(url: String): Long {
-        var totalLength = 0L
-        val request = okhttp3.Request.Builder().url(url).head().build()
-        val response = client.newCall(request).execute()
-        totalLength += response.header("Content-Length")?.toLong() ?: 0L
-        response.close()
-        return totalLength
+            if (decryptingChunk.size > 2048) {
+                val decryptedChunk = Utils.decryptBlowfish(decryptingChunk.copyOfRange(0, 2048), key)
+                decryptedStream.write(decryptedChunk)
+                decryptedStream.write(decryptingChunk, 2048, decryptingChunk.size - 2048)
+            } else {
+                decryptedStream.write(decryptingChunk)
+            }
+        }
+
+        val decryptedBytes = decryptedStream.toByteArray()
+        println("Decrypted chunk size: ${decryptedBytes.size}")
+        return decryptedBytes
     }
 
-    override suspend fun getStreamableVideo(streamable: Streamable) =
-        StreamableVideo(Request(streamable.id), looping = false, crop = false)
+    override suspend fun getStreamableVideo(streamable: Streamable) = throw Exception("not Used")
 
     override suspend fun loadTrack(track: Track) = coroutineScope {
         val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!, licenseToken!!).getMediaUrl(track)
