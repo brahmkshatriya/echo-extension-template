@@ -23,8 +23,8 @@ import java.util.zip.GZIPInputStream
 
 // Settings placeholder
 class Settings {
-    val deezerLanguage: String? = "de"
-    val deezerCountry: String? = "DE"
+    val deezerLanguage: String? = "en"
+    val deezerCountry: String? = "US"
 }
 
 class DeezerApi(
