@@ -48,7 +48,7 @@ jobs:
           ROLE: ${{ secrets.DISCORD_PING_ROLE_ID }}
           WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          message=$(echo "<@&${{ env.ROLE }}> **Youtube Extension : ${{ env.VERSION }}**\n${{ env.COMMIT }}")
+          message=$(echo "<@&${{ env.ROLE }}> **Deezer Extension : ${{ env.VERSION }}**\n${{ env.COMMIT }}")
           curl -F "payload_json={\"content\":\"${message}\"}" \
-          -F "echo_beta=@app/build/yt-${{ env.VERSION }}.apk" \
+          -F "echo_beta=@app/build/de-${{ env.VERSION }}.apk" \
           ${{ env.WEBHOOK }}
