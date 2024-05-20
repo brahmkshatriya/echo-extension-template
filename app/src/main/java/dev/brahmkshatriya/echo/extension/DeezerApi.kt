@@ -251,11 +251,26 @@ class DeezerApi(
         return jObject
     }
 
-    suspend fun track(track: Track): JsonObject {
+    suspend fun track(tracks: Array<Track>): JsonObject {
         val jsonData = callApi(
             method = "song.getListData",
             params = mapOf(
-                "sng_ids" to arrayOf(track.id)
+                "sng_ids" to tracks.map { it.id }
+            )
+        )
+        val jObject = json.decodeFromString<JsonObject>(jsonData)
+        return jObject
+    }
+
+    //Get favorite tracks
+    suspend fun getTracks(): JsonObject {
+        val jsonData = callApi(
+            method = "favorite_song.getList",
+            params = mapOf(
+                "user_id" to userId,
+                "tab" to "loved",
+                "nb" to 50,
+                "start" to 0
             )
         )
         val jObject = json.decodeFromString<JsonObject>(jsonData)
@@ -315,6 +330,7 @@ class DeezerApi(
         val jObject = json.decodeFromString<JsonObject>(jsonData)
         return jObject
     }
+
 
     //Get users playlists
     suspend fun getPlaylists(): JsonObject {
