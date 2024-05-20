@@ -202,7 +202,7 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, SearchClie
 
                 // Read the entire byte stream into memory
                 val completeStream = ByteArrayOutputStream()
-                val buffer = ByteArray(256 * 1024)
+                val buffer = ByteArray(2 * 1024 * 1024) // Increased buffer size
                 var bytesRead: Int
                 while (byteStream?.read(buffer).also { bytesRead = it ?: -1 } != -1) {
                     completeStream.write(buffer, 0, bytesRead)
@@ -213,22 +213,30 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, SearchClie
                 println("Total bytes read: ${completeStreamBytes.size}")
 
                 // Determine chunk size based on decryption block size
-                val decryptionBlockSize = 2048 * 3
+                val decryptionBlockSize = 2048 * 1536 // Increased decryption block size
                 val numChunks = (completeStreamBytes.size + decryptionBlockSize - 1) / decryptionBlockSize
                 println("Number of chunks: $numChunks")
+
+                // Measure decryption time
+                val startTime = System.nanoTime()
 
                 // Decrypt the chunks concurrently
                 val deferredChunks = (0 until numChunks).map { i ->
                     val start = i * decryptionBlockSize
                     val end = minOf((i + 1) * decryptionBlockSize, completeStreamBytes.size)
                     println("Chunk $i: start $start, end $end")
-                    async { decryptStreamChunk(completeStreamBytes.copyOfRange(start, end), key) }
+                    async(Dispatchers.Default) { decryptStreamChunk(completeStreamBytes.copyOfRange(start, end), key) }
                 }
 
                 // Wait for all decryption tasks to complete and concatenate the results
                 deferredChunks.forEach { deferred ->
                     decChunk += deferred.await()
                 }
+
+                val endTime = System.nanoTime()
+                val duration = endTime - startTime
+                println("Decryption took ${duration / 1_000_000} milliseconds")
+
                 response.close()
             }
         }
@@ -269,7 +277,7 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, SearchClie
         val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!, licenseToken!!).getMediaUrl(track)
         val dataObject = jsonObject["data"]!!.jsonArray.first().jsonObject
         val mediaObject = dataObject["media"]!!.jsonArray.first().jsonObject
-        val sourcesObject = mediaObject["sources"]!!.jsonArray[1]
+        val sourcesObject = mediaObject["sources"]!!.jsonArray[0]
         val url = sourcesObject.jsonObject["url"]!!.jsonPrimitive.content
         val key = Utils.createBlowfishKey(trackId = track.id)
 
