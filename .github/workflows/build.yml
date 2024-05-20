@@ -41,3 +41,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload APK to Discord
+        shell: bash
+        env:
+          ROLE: ${{ secrets.DISCORD_PING_ROLE_ID }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          message=$(echo "<@&${{ env.ROLE }}> **Youtube Extension : ${{ env.VERSION }}**\n${{ env.COMMIT }}")
+          curl -F "payload_json={\"content\":\"${message}\"}" \
+          -F "echo_beta=@app/build/yt-${{ env.VERSION }}.apk" \
+          ${{ env.WEBHOOK }}
