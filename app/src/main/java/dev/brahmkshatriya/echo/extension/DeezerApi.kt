@@ -1,5 +1,6 @@
 package dev.brahmkshatriya.echo.extension
 
+import android.util.Log
 import dev.brahmkshatriya.echo.common.models.Album
 import dev.brahmkshatriya.echo.common.models.Artist
 import dev.brahmkshatriya.echo.common.models.ImageHolder.Companion.toImageHolder
@@ -182,7 +183,7 @@ class DeezerApi(
         // Create request body
         val requestBody = JSONObject(mapOf(
             "formats" to arrayOf("FLAC", "MP3_320", "MP3_128", "MP3_64", "MP3_MISC"),
-            "ids" to arrayOf(track.id.toInt())
+            "ids" to arrayOf(track.id.toLong())
         )).toString().toRequestBody("application/json; charset=utf-8".toMediaType())
 
         /*val format = if (track.extras["FILESIZE_MP3_MISC"] != "") {
