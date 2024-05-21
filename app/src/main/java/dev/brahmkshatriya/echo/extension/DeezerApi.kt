@@ -15,12 +15,15 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Headers
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.json.JSONObject
+import java.math.BigInteger
+import java.security.MessageDigest
 import java.util.zip.GZIPInputStream
 
 // Settings placeholder
@@ -155,8 +158,45 @@ class DeezerApi(
         )
     }
 
-    fun getArlByEmail(mail: String, password: String): String {
+    fun getArlByEmail(mail: String = "", password: String = ""): String {
+        val clientId = "447462"
+        val clientSecret = "a83bf7f38ad2f137e444727cfc3775cf"
+        val md5Password = md5(password)
+
+        val params = mapOf(
+            "app_id" to clientId,
+            "login" to mail,
+            "password" to md5Password,
+            "hash" to md5(clientId + mail + md5Password + clientSecret)
+        )
+
+        val responseJson = get(params)
+        val apiResponse = json.decodeFromString<JsonObject>(responseJson)
+        val accessToken = apiResponse.jsonObject["access_token"]!!.jsonPrimitive.content
         return ""
+    }
+
+    private fun md5(input: String): String {
+        val md = MessageDigest.getInstance("MD5")
+        val digest = md.digest(input.toByteArray())
+        return BigInteger(1, digest).toString(16).padStart(32, '0')
+    }
+
+    private fun get(params: Map<String, String> = emptyMap()): String {
+        val url = "https://connect.deezer.com/oauth/user_auth.php"
+        val httpUrl = url.toHttpUrlOrNull()!!.newBuilder().apply {
+            params.forEach { (key, value) -> addQueryParameter(key, value) }
+        }.build()
+
+        val request = Request.Builder()
+            .url(httpUrl)
+            .get()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw Exception("Unexpected code $response")
+            return response.body?.string() ?: throw Exception("Empty response body")
+        }
     }
 
     suspend fun getMediaUrl(track: Track): JsonObject = withContext(Dispatchers.IO) {
