@@ -93,7 +93,7 @@ fun getByteStreamAudio(streamable: Streamable, client: OkHttpClient): Streamable
             println("Total bytes read: ${completeStreamBytes.size}")
 
             // Determine chunk size based on decryption block size
-            val decryptionBlockSize = 2048 * 1536 // Increased decryption block size
+            val decryptionBlockSize = 2048 * 3072 // Increased decryption block size
             val numChunks = (completeStreamBytes.size + decryptionBlockSize - 1) / decryptionBlockSize
             println("Number of chunks: $numChunks")
 

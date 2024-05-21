@@ -26,6 +26,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -143,51 +144,50 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, SearchClie
 
     override fun getLibraryFeed(tab: Tab?) = PagedData.Single {
         if(arl == null) throw loginRequiredException
-            val tabId = tab?.id ?: "all"
-            var list = listOf<MediaItemsContainer>()
-            when (tabId) {
-                "all" -> {
-                    val all = allTabs?.second
-                    if (all != null) return@Single all
-                }
-
-                "playlists" -> {
-                    val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!).getPlaylists()
-                    val resultObject = jsonObject["results"]!!.jsonObject
-                    val tabObject = resultObject["TAB"]!!.jsonObject
-                    val playlistObject = tabObject["playlists"]!!.jsonObject
-                    val dataArray = playlistObject["data"]!!.jsonArray
-
-                    val itemArray = dataArray.mapNotNull { item ->
-                        item.toEchoMediaItem(DeezerApi(arl!!, sid!!, token!!, userId!!))?.toMediaItemsContainer()
-                    }
-                    list = itemArray
-                }
-
-                "albums" -> {
-                    val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!).getAlbums()
-                    val resultObject = jsonObject["results"]!!.jsonObject
-                    val tabObject = resultObject["TAB"]!!.jsonObject
-                    val playlistObject = tabObject["albums"]!!.jsonObject
-                    val dataArray = playlistObject["data"]!!.jsonArray
-
-                    val itemArray = dataArray.mapNotNull { item ->
-                        item.toEchoMediaItem(DeezerApi(arl!!, sid!!, token!!, userId!!))?.toMediaItemsContainer()
-                    }
-                    list = itemArray
-                }
-
-                "tracks" -> {
-                    val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!).getTracks()
-                    val resultObject = jsonObject["results"]!!.jsonObject
-                    val dataArray = resultObject["data"]!!.jsonArray
-                    val itemArray = dataArray.mapNotNull { item ->
-                        item.toEchoMediaItem(DeezerApi(arl!!, sid!!, token!!, userId!!))?.toMediaItemsContainer()
-                    }
-                    list = itemArray
-                }
+        val tabId = tab?.id ?: "all"
+        var list = listOf<MediaItemsContainer>()
+        when (tabId) {
+            "all" -> {
+                val all = allTabs?.second
+                if (all != null) return@Single all
             }
-            list
+            "playlists" -> {
+                val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!).getPlaylists()
+                val resultObject = jsonObject["results"]!!.jsonObject
+                val tabObject = resultObject["TAB"]!!.jsonObject
+                val playlistObject = tabObject["playlists"]!!.jsonObject
+                val dataArray = playlistObject["data"]!!.jsonArray
+
+                val itemArray = dataArray.mapNotNull { item ->
+                    item.toEchoMediaItem(DeezerApi(arl!!, sid!!, token!!, userId!!))?.toMediaItemsContainer()
+                }
+                list = itemArray
+            }
+
+            "albums" -> {
+                val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!).getAlbums()
+                val resultObject = jsonObject["results"]!!.jsonObject
+                val tabObject = resultObject["TAB"]!!.jsonObject
+                val playlistObject = tabObject["albums"]!!.jsonObject
+                val dataArray = playlistObject["data"]!!.jsonArray
+
+                val itemArray = dataArray.mapNotNull { item ->
+                    item.toEchoMediaItem(DeezerApi(arl!!, sid!!, token!!, userId!!))?.toMediaItemsContainer()
+                }
+                list = itemArray
+            }
+
+            "tracks" -> {
+                val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!).getTracks()
+                val resultObject = jsonObject["results"]!!.jsonObject
+                val dataArray = resultObject["data"]!!.jsonArray
+                val itemArray = dataArray.mapNotNull { item ->
+                    item.toEchoMediaItem(DeezerApi(arl!!, sid!!, token!!, userId!!))?.toMediaItemsContainer()
+                }
+                list = itemArray
+            }
+        }
+        list
     }
 
     override suspend fun addTracksToPlaylist(playlist: Playlist, tracks: List<Track>, index: Int, new: List<Track>) {
@@ -301,7 +301,11 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, SearchClie
     override suspend fun getStreamableVideo(streamable: Streamable) = throw Exception("not Used")
 
     override suspend fun loadTrack(track: Track) = coroutineScope {
-        val jsonObject = DeezerApi(arl!!, sid!!, token!!, userId!!, licenseToken!!).getMediaUrl(track)
+        val jsonObject = if (track.extras["FILESIZE_MP3_MISC"] != "") {
+            DeezerApi(arl!!, sid!!, token!!, userId!!, licenseToken!!).getMP3MediaUrl(track)
+        } else {
+            DeezerApi(arl!!, sid!!, token!!, userId!!, licenseToken!!).getMediaUrl(track)
+        }
         val dataObject = jsonObject["data"]!!.jsonArray.first().jsonObject
         val mediaObject = dataObject["media"]!!.jsonArray.first().jsonObject
         val sourcesObject = mediaObject["sources"]!!.jsonArray[0]

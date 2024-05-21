@@ -199,39 +199,27 @@ class DeezerApi(
         }
     }
 
-    suspend fun getMediaUrl(track: Track): JsonObject = withContext(Dispatchers.IO) {
+    suspend fun getMP3MediaUrl(track: Track): JsonObject = withContext(Dispatchers.IO) {
         val headersBuilder = Headers.Builder()
-        /*headersBuilder.add("Accept-Encoding", "gzip")
+        headersBuilder.add("Accept-Encoding", "gzip")
         headersBuilder.add("Accept-Language", settings.deezerLanguage ?: "en")
         headersBuilder.add("Cache-Control", "max-age=0")
         headersBuilder.add("Connection", "Keep-alive")
         headersBuilder.add("Content-Type", "application/json; charset=utf-8")
         headersBuilder.add("Cookie", "arl=$arl&sid=$sid")
         headersBuilder.add("Host", "media.deezer.com")
-        headersBuilder.add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")*/
+        headersBuilder.add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
         val headers = headersBuilder.build()
 
         val urlBuilder = HttpUrl.Builder()
             .scheme("https")
-            //.host("media.deezer.com")
-            .host("dzmedia.fly.dev")
-            //.addPathSegment("v1")
+            .host("media.deezer.com")
+            .addPathSegment("v1")
             .addPathSegment("get_url")
 
         val url = urlBuilder.build()
 
         // Create request body
-        val requestBody = JSONObject(mapOf(
-            "formats" to arrayOf("FLAC", "MP3_320", "MP3_128", "MP3_64", "MP3_MISC"),
-            "ids" to arrayOf(track.id.toLong())
-        )).toString().toRequestBody("application/json; charset=utf-8".toMediaType())
-
-        /*val format = if (track.extras["FILESIZE_MP3_MISC"] != "") {
-            "MP3_MISC"
-        } else {
-            "MP3_128"
-        }
-
         val requestBody =
         JSONObject(
         mapOf(
@@ -242,20 +230,50 @@ class DeezerApi(
                     "formats" to arrayOf(
                         mapOf(
                             "cipher" to "BF_CBC_STRIPE",
-                            "format" to format
+                            "format" to "MP3_MISC"
                         )
                     )
                 )
             ),
             "track_tokens" to arrayOf(track.extras["TRACK_TOKEN"])
         )
-        ).toString().toRequestBody("application/json; charset=utf-8".toMediaType())*/
+        ).toString().toRequestBody("application/json; charset=utf-8".toMediaType())
 
         // Create request
         val request = Request.Builder()
             .url(url)
             .post(requestBody)
             .headers(headers)
+            .build()
+
+        // Execute request
+        val response = client.newCall(request).execute()
+        val responseBody = response.body?.string()
+        val body = responseBody.toString()
+
+        val jObject = json.decodeFromString<JsonObject>(body)
+
+        jObject
+    }
+
+    suspend fun getMediaUrl(track: Track): JsonObject = withContext(Dispatchers.IO) {
+        val urlBuilder = HttpUrl.Builder()
+            .scheme("https")
+            .host("dzmedia.fly.dev")
+            .addPathSegment("get_url")
+
+        val url = urlBuilder.build()
+
+        // Create request body
+        val requestBody = JSONObject(mapOf(
+            "formats" to arrayOf("FLAC", "MP3_320", "MP3_128", "MP3_64", "MP3_MISC"),
+            "ids" to arrayOf(track.id.toLong())
+        )).toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+
+        // Create request
+        val request = Request.Builder()
+            .url(url)
+            .post(requestBody)
             .build()
 
         // Execute request
