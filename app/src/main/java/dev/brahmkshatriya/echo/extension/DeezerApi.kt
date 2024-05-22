@@ -1,6 +1,5 @@
 package dev.brahmkshatriya.echo.extension
 
-import android.util.Log
 import dev.brahmkshatriya.echo.common.models.Album
 import dev.brahmkshatriya.echo.common.models.Artist
 import dev.brahmkshatriya.echo.common.models.ImageHolder.Companion.toImageHolder
@@ -38,7 +37,7 @@ class DeezerApi(
     private var token: String = "",
     var userId: String = "",
     private var licenseToken: String = "",
-    private var userName: String? = null,
+    private var userName: String = "",
     private var favoritesPlaylistId: String = ""
 ) {
 
@@ -62,7 +61,7 @@ class DeezerApi(
     }
 
     //Get headers
-    private fun getHeaders(): Headers {
+    private fun getHeaders(method: String? = ""): Headers {
         val headersBuilder = Headers.Builder()
         headersBuilder.add("Accept", "*/*")
         headersBuilder.add("Accept-Charset", "utf-8,ISO-8859-1;q=0.7,*;q=0.3")
@@ -72,7 +71,11 @@ class DeezerApi(
         headersBuilder.add("Connection", "keep-alive")
         headersBuilder.add("Content-Language", "${settings.deezerLanguage ?: "en"}-${settings.deezerCountry ?: "US"}")
         headersBuilder.add("Content-Type", "application/json; charset=utf-8")
-        headersBuilder.add("Cookie", "arl=$arl; sid=$sid")
+        if (method != "user.getArl") {
+            headersBuilder.add("Cookie", "arl=$arl; sid=$sid")
+        } else {
+            headersBuilder.add("Cookie", "sid=$sid")
+        }
         headersBuilder.add("Host", "www.deezer.com")
         headersBuilder.add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
         return headersBuilder.build()
@@ -103,11 +106,15 @@ class DeezerApi(
             .toRequestBody()
 
         // Create request
-        val request = Request.Builder()
-            .url(url)
-            .post(requestBody)
-            .headers(getHeaders())
-            .build()
+        val requestBuilder = Request.Builder()
+        requestBuilder.url(url)
+        if (method != "user.getArl") {
+            requestBuilder.post(requestBody)
+        } else {
+            requestBuilder.get()
+        }
+        requestBuilder.headers(getHeaders(method))
+        val  request = requestBuilder.build()
 
         // Execute request
         val response = client.newCall(request).execute()
@@ -158,7 +165,21 @@ class DeezerApi(
         )
     }
 
-    fun getArlByEmail(mail: String = "", password: String = ""): String {
+    suspend fun getArlByEmail(mail: String = "", password: String = "") {
+        //Get SID
+        val url = "https://www.deezer.com/"
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .build()
+
+        val response = client.newCall(request).execute()
+        response.headers.forEach {
+            if(it.second.startsWith("sid=")) {
+                sid = it.second.substringAfter("sid=").substringBefore(";")
+            }
+        }
+
         val clientId = "447462"
         val clientSecret = "a83bf7f38ad2f137e444727cfc3775cf"
         val md5Password = md5(password)
@@ -170,10 +191,15 @@ class DeezerApi(
             "hash" to md5(clientId + mail + md5Password + clientSecret)
         )
 
-        val responseJson = get(params)
+        //Get access token
+        val responseJson = getToken(params)
         val apiResponse = json.decodeFromString<JsonObject>(responseJson)
-        val accessToken = apiResponse.jsonObject["access_token"]!!.jsonPrimitive.content
-        return ""
+        token = apiResponse.jsonObject["access_token"]!!.jsonPrimitive.content
+
+        // Get ARL
+        val arlResponse = callApi("user.getArl")
+        val arlObject = json.decodeFromString<JsonObject>(arlResponse)
+        arl = arlObject["results"]!!.jsonPrimitive.content
     }
 
     private fun md5(input: String): String {
@@ -182,7 +208,7 @@ class DeezerApi(
         return BigInteger(1, digest).toString(16).padStart(32, '0')
     }
 
-    private fun get(params: Map<String, String> = emptyMap()): String {
+    private fun getToken(params: Map<String, String> = emptyMap()): String {
         val url = "https://connect.deezer.com/oauth/user_auth.php"
         val httpUrl = url.toHttpUrlOrNull()!!.newBuilder().apply {
             params.forEach { (key, value) -> addQueryParameter(key, value) }
@@ -191,6 +217,12 @@ class DeezerApi(
         val request = Request.Builder()
             .url(httpUrl)
             .get()
+            .headers(
+                Headers.headersOf(
+                    "Cookie", "sid=$sid",
+                    "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+                )
+            )
             .build()
 
         client.newCall(request).execute().use { response ->
