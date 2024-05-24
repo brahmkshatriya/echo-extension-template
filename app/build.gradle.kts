@@ -61,7 +61,7 @@ android {
 }
 
 dependencies {
-    val libVersion = "728a3edac8"
+    val libVersion = "dd65bd4709"
     compileOnly("com.github.brahmkshatriya:echo:$libVersion")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

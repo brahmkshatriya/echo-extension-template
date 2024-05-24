@@ -141,17 +141,18 @@ class DeezerApi(
         }
     }
 
-    suspend fun makeUser(): User {
+    suspend fun makeUser(): List<User>{
+        val userList = mutableListOf<User>()
         val jsonData = callApi("deezer.getUserData")
         val jObject = json.decodeFromString<JsonObject>(jsonData)
         val userResults = jObject["results"]
-        val user = userResults!!.jsonObject["USER"]
+        val userObject = userResults!!.jsonObject["USER"]
         val token = userResults.jsonObject["checkForm"]!!.jsonPrimitive.content
-        val userId = user!!.jsonObject["USER_ID"]!!.jsonPrimitive.content
-        val licenseToken = user.jsonObject["OPTIONS"]!!.jsonObject["license_token"]!!.jsonPrimitive.content
-        val name = user.jsonObject["BLOG_NAME"]!!.jsonPrimitive.content
-        val cover = user.jsonObject["USER_PICTURE"]!!.jsonPrimitive.content
-        return User(
+        val userId = userObject!!.jsonObject["USER_ID"]!!.jsonPrimitive.content
+        val licenseToken = userObject.jsonObject["OPTIONS"]!!.jsonObject["license_token"]!!.jsonPrimitive.content
+        val name = userObject.jsonObject["BLOG_NAME"]!!.jsonPrimitive.content
+        val cover = userObject.jsonObject["USER_PICTURE"]!!.jsonPrimitive.content
+        val user = User(
             id = userId,
             name = name,
             cover = "https://e-cdns-images.dzcdn.net/images/user/$cover/100x100-000000-80-0-0.jpg".toImageHolder(),
@@ -163,9 +164,11 @@ class DeezerApi(
                 "license_token" to licenseToken
             )
         )
+        userList.add(user)
+        return userList
     }
 
-    suspend fun getArlByEmail(mail: String = "", password: String = "") {
+    suspend fun getArlByEmail(mail: String, password: String): Map<String, String?> {
         //Get SID
         val url = "https://www.deezer.com/"
         val request = Request.Builder()
@@ -200,6 +203,12 @@ class DeezerApi(
         val arlResponse = callApi("user.getArl")
         val arlObject = json.decodeFromString<JsonObject>(arlResponse)
         arl = arlObject["results"]!!.jsonPrimitive.content
+
+        return mapOf(
+            "arl" to arl,
+            "token" to token,
+            "sid" to sid
+        )
     }
 
     private fun md5(input: String): String {

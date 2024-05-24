@@ -12,6 +12,7 @@ import dev.brahmkshatriya.echo.common.exceptions.LoginRequiredException
 import dev.brahmkshatriya.echo.common.helpers.PagedData
 import dev.brahmkshatriya.echo.common.models.Album
 import dev.brahmkshatriya.echo.common.models.EchoMediaItem.Companion.toMediaItem
+import dev.brahmkshatriya.echo.common.models.ExtensionType
 import dev.brahmkshatriya.echo.common.models.MediaItemsContainer
 import dev.brahmkshatriya.echo.common.models.Playlist
 import dev.brahmkshatriya.echo.common.models.QuickSearchItem
@@ -35,7 +36,7 @@ import org.apache.http.conn.ConnectTimeoutException
 import java.util.Locale
 
 class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, SearchClient, AlbumClient,
-    PlaylistClient, LoginClient.WebView, LibraryClient {
+    PlaylistClient, LoginClient.WebView, LoginClient.UsernamePassword, LibraryClient {
 
     private val json = Json {
         isLenient = true
@@ -398,7 +399,7 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, SearchClie
 
     //<============= Login =============>
 
-    private val loginRequiredException = LoginRequiredException("deezer", "Deezer")
+    private val loginRequiredException = LoginRequiredException("deezer", "Deezer", ExtensionType.MUSIC)
 
     override val loginWebViewInitialUrl = "https://www.deezer.com/login?redirect_type=page&redirect_link=%2Faccount%2F"
         .toRequest(mapOf(Pair("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")))
@@ -406,16 +407,23 @@ class DeezerExtension : ExtensionClient, HomeFeedClient, TrackClient, SearchClie
     override val loginWebViewStopUrlRegex = "https://www\\.deezer\\.com/account/.*".toRegex()
 
     override suspend fun onLoginWebviewStop(url: String, cookie: String): List<User> {
-        val userList = mutableListOf<User>()
         if (cookie.contains("arl=")) {
             val arl = cookie.substringAfter("arl=").substringBefore(";")
             val sid = cookie.substringAfter("sid=").substringBefore(";")
-            val user = DeezerApi(arl, sid).makeUser()
-            userList.add(user)
+            val userList = DeezerApi(arl, sid).makeUser()
             return userList
         } else {
             return emptyList()
         }
+    }
+
+    override suspend fun onLogin(username: String, password: String): List<User> {
+        val map = DeezerApi().getArlByEmail(username, password)
+        val arl = map["arl"] ?: ""
+        val token = map["token"] ?: ""
+        val sid = map["sid"] ?: ""
+        val userList = DeezerApi(arl, sid, token).makeUser()
+        return userList
     }
 
     override suspend fun onSetLoginUser(user: User?) {
