@@ -1,4 +1,10 @@
 <resources>
-    <string name="app_name">Echo Extension</string>
-    <string name="class_path">example.ExampleExtension</string>
+    <string name="app_name" />
+    <string name="class_path" />
+    <string name="id" />
+    <string name="name" />
+    <string name="version" />
+    <string name="description" />
+    <string name="author" />
+    <string name="icon_url" />
 </resources>

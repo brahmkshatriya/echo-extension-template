@@ -3,29 +3,41 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val extensionClass = "TestExtension"
+val id = "test"
+val name = "Test Music"
+val version = "1.0.0"
+val description = "A Test Extension"
+val author = "Test Author"
+val iconUrl: String? = null
+
 android {
     namespace = "dev.brahmkshatriya.echo.extension"
     compileSdk = 34
 
     defaultConfig {
-        val extensionName = "Test"
-        val extensionClass = "TestExtension"
-
-        applicationId = "dev.brahmkshatriya.echo.extension"
+        applicationId = "dev.brahmkshatriya.echo.extension.test"
         minSdk = 24
         targetSdk = 34
 
         versionCode = 1
-        versionName = "1.0"
+        versionName = version
 
-        resValue("string", "app_name", "Echo : $extensionName Extension")
+        resValue("string", "app_name", "Echo : $name Extension")
         resValue("string", "class_path", "$namespace.$extensionClass")
+        resValue("string", "name", name)
+        resValue("string", "id", id)
+        resValue("string", "version", version)
+        resValue("string", "description", description)
+        resValue("string", "author", author)
+        iconUrl?.let { resValue("string", "icon_url", it) }
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -51,10 +63,10 @@ android {
 
 
 dependencies {
-    compileOnly("com.github.brahmkshatriya:echo:8f951e48af")
+    val libVersion = "38e1df03f6"
+    compileOnly("com.github.brahmkshatriya:echo:$libVersion")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1-Beta")
-    testImplementation("androidx.paging:paging-runtime-ktx:3.2.1")
-    testImplementation("com.github.brahmkshatriya:echo:8f951e48af")
+    testImplementation("com.github.brahmkshatriya:echo:$libVersion")
 }
