@@ -27,6 +27,8 @@ android {
     compileSdk = 34
     defaultConfig {
         applicationId = "dev.brahmkshatriya.echo.extension.test"
+        minSdk = 24
+        targetSdk = 34
     }
 
     buildTypes {
@@ -57,8 +59,6 @@ abstract class EchoExtensionPlugin : Plugin<Project> {
         project.afterEvaluate {
             project.extensions.configure<AppExtension>("android") {
                 defaultConfig.apply {
-                    minSdk = 24
-                    targetSdk = 34
                     with(echoExtension) {
                         resValue("string", "id", id!!)
                         resValue("string", "name", name!!)
