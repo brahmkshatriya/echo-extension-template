@@ -1,42 +1,36 @@
+import com.android.build.gradle.AppExtension
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-val extensionClass = "TestExtension"
-val id = "test"
-val name = "Test Music"
-val version = "1.0.0"
-val description = "A Test Extension"
-val author = "Test Author"
-val iconUrl: String? = null
+apply<EchoExtensionPlugin>()
+configure<EchoExtension> {
+    versionCode = 1
+    versionName = "1.0.0"
+    extensionClass = "TestExtension"
+    id = "test"
+    name = "Test Music"
+    description = "A Test Extension"
+    author = "Test Author"
+}
+
+dependencies {
+    implementation(project(":ext"))
+    val libVersion: String by project
+    compileOnly("com.github.brahmkshatriya:echo:$libVersion")
+}
 
 android {
     namespace = "dev.brahmkshatriya.echo.extension"
     compileSdk = 34
-
     defaultConfig {
         applicationId = "dev.brahmkshatriya.echo.extension.test"
-        minSdk = 24
-        targetSdk = 34
-
-        versionCode = 1
-        versionName = version
-
-        resValue("string", "app_name", "Echo : $name Extension")
-        resValue("string", "class_path", "$namespace.$extensionClass")
-        resValue("string", "name", name)
-        resValue("string", "id", id)
-        resValue("string", "version", version)
-        resValue("string", "description", description)
-        resValue("string", "author", author)
-        iconUrl?.let { resValue("string", "icon_url", it) }
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
-        release {
+        all {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -44,29 +38,40 @@ android {
             )
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-
-    @Suppress("UnstableApiUsage")
-    testOptions {
-        unitTests {
-            this.isReturnDefaultValues = true
-        }
-    }
 }
 
+open class EchoExtension {
+    var extensionClass: String? = null
+    var id: String? = null
+    var name: String? = null
+    var description: String? = null
+    var author: String? = null
+    var iconUrl: String? = null
+    var versionCode: Int? = null
+    var versionName: String? = null
+}
 
-
-dependencies {
-    val libVersion = "38e1df03f6"
-    compileOnly("com.github.brahmkshatriya:echo:$libVersion")
-
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1-Beta")
-    testImplementation("com.github.brahmkshatriya:echo:$libVersion")
+abstract class EchoExtensionPlugin : Plugin<Project> {
+    override fun apply(project: Project) {
+        val echoExtension = project.extensions.create("echoExtension", EchoExtension::class.java)
+        project.afterEvaluate {
+            project.extensions.configure<AppExtension>("android") {
+                defaultConfig.apply {
+                    minSdk = 24
+                    targetSdk = 34
+                    with(echoExtension) {
+                        resValue("string", "id", id!!)
+                        resValue("string", "name", name!!)
+                        resValue("string", "app_name", "Echo : $name Extension")
+                        val extensionClass = extensionClass!!
+                        resValue("string", "class_path", "$namespace.$extensionClass")
+                        resValue("string", "version", versionName!!)
+                        resValue("string", "description", description!!)
+                        resValue("string", "author", author!!)
+                        iconUrl?.let { resValue("string", "icon_url", it) }
+                    }
+                }
+            }
+        }
+    }
 }

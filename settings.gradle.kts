@@ -18,4 +18,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "extension"
 include(":app")
- 
+include(":ext")
