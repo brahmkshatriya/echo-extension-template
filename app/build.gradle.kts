@@ -1,19 +1,8 @@
-import com.android.build.gradle.AppExtension
+import java.io.ByteArrayOutputStream
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-}
-
-apply<EchoExtensionPlugin>()
-configure<EchoExtension> {
-    versionCode = 1
-    versionName = "1.0.0"
-    extensionClass = "TestExtension"
-    id = "test"
-    name = "Test Music"
-    description = "A Test Extension"
-    author = "Test Author"
 }
 
 dependencies {
@@ -22,13 +11,48 @@ dependencies {
     compileOnly("com.github.brahmkshatriya:echo:$libVersion")
 }
 
+val extType: String by project
+val extId: String by project
+val extClass: String by project
+
+val extIconUrl: String? by project
+val extName: String by project
+val extDescription: String? by project
+
+val extAuthor: String by project
+val extAuthorUrl: String? by project
+
+val extRepoUrl: String? by project
+val extUpdateUrl: String? by project
+
+val gitHash = execute("git", "rev-parse", "HEAD").take(7)
+val gitCount = execute("git", "rev-list", "--count", "HEAD").toInt()
+val verCode = gitCount
+val verName = gitHash
+
 android {
     namespace = "dev.brahmkshatriya.echo.extension"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
-        applicationId = "dev.brahmkshatriya.echo.extension.test"
+        applicationId = "dev.brahmkshatriya.echo.extension.$extId"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
+
+        manifestPlaceholders.apply {
+            put("type", "dev.brahmkshatriya.echo.${extType}")
+            put("id", extId)
+            put("class_path", "dev.brahmkshatriya.echo.extension.${extClass}")
+            put("version", verName)
+            put("version_code", verCode.toString())
+            put("icon_url", extIconUrl ?: "")
+            put("app_name", "Echo : $extName Extension")
+            put("name", extName)
+            put("description", extDescription?:"")
+            put("author", extAuthor)
+            put("author_url", extAuthorUrl ?: "")
+            put("repo_url", extRepoUrl ?: "")
+            put("update_url", extUpdateUrl ?: "")
+        }
     }
 
     buildTypes {
@@ -40,38 +64,18 @@ android {
             )
         }
     }
-}
 
-open class EchoExtension {
-    var extensionClass: String? = null
-    var id: String? = null
-    var name: String? = null
-    var description: String? = null
-    var author: String? = null
-    var iconUrl: String? = null
-    var versionCode: Int? = null
-    var versionName: String? = null
-}
-
-abstract class EchoExtensionPlugin : Plugin<Project> {
-    override fun apply(project: Project) {
-        val echoExtension = project.extensions.create("echoExtension", EchoExtension::class.java)
-        project.afterEvaluate {
-            project.extensions.configure<AppExtension>("android") {
-                defaultConfig.apply {
-                    with(echoExtension) {
-                        resValue("string", "id", id!!)
-                        resValue("string", "name", name!!)
-                        resValue("string", "app_name", "Echo : $name Extension")
-                        val extensionClass = extensionClass!!
-                        resValue("string", "class_path", "$namespace.$extensionClass")
-                        resValue("string", "version", versionName!!)
-                        resValue("string", "description", description!!)
-                        resValue("string", "author", author!!)
-                        iconUrl?.let { resValue("string", "icon_url", it) }
-                    }
-                }
-            }
-        }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+}
+
+fun execute(vararg command: String): String {
+    val outputStream = ByteArrayOutputStream()
+    project.exec {
+        commandLine(*command)
+        standardOutput = outputStream
+    }
+    return outputStream.toString().trim()
 }
