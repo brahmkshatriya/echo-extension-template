@@ -30,6 +30,14 @@ val gitCount = execute("git", "rev-list", "--count", "HEAD").toInt()
 val verCode = gitCount
 val verName = gitHash
 
+tasks.register("uninstall") {
+    exec {
+        isIgnoreExitValue = true
+        executable(android.adbExecutable)
+        args("shell", "pm", "uninstall", android.defaultConfig.applicationId!!)
+    }
+}
+
 android {
     namespace = "dev.brahmkshatriya.echo.extension"
     compileSdk = 35
@@ -47,7 +55,7 @@ android {
             put("icon_url", extIconUrl ?: "")
             put("app_name", "Echo : $extName Extension")
             put("name", extName)
-            put("description", extDescription?:"")
+            put("description", extDescription ?: "")
             put("author", extAuthor)
             put("author_url", extAuthorUrl ?: "")
             put("repo_url", extRepoUrl ?: "")
