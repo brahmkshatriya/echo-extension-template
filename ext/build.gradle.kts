@@ -5,6 +5,7 @@ plugins {
     id("java-library")
     id("org.jetbrains.kotlin.jvm")
     id("com.gradleup.shadow") version "8.3.0"
+    id("maven-publish")
 }
 
 java {
@@ -45,6 +46,18 @@ val gitHash = execute("git", "rev-parse", "HEAD").take(7)
 val gitCount = execute("git", "rev-list", "--count", "HEAD").toInt()
 val verCode = gitCount
 val verName = gitHash
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            groupId = "dev.brahmkshatriya.echo.extension"
+            artifactId = extId
+            version = verName
+
+            from(components["java"])
+        }
+    }
+}
 
 tasks {
     val shadowJar by getting(ShadowJar::class) {
