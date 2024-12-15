@@ -38,8 +38,6 @@ tasks.register("uninstall") {
     }
 }
 
-tasks.withType<PublishToMavenLocal>().configureEach { enabled = false }
-
 android {
     namespace = "dev.brahmkshatriya.echo.extension"
     compileSdk = 35

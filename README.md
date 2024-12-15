@@ -10,7 +10,7 @@ Clone this repository and name it as you want.
 
 ### 2. Configure the [gradle.properties](gradle.properties)
 The file will have the following properties:
-- `libVersion` - The version of the Echo library, defaults to `SNAPSHOT`.
+- `libVersion` - The version of the Echo library, defaults to `main-SNAPSHOT`.
 - `extType` - The type of the extension you want to create. It can be `music`, `tracker`
   or `lyrics`. More information can be found
   in [`Extension<*>`](https://github.com/brahmkshatriya/echo/blob/main/common/src/main/java/dev/brahmkshatriya/echo/common/Extension.kt#L33-L43)
