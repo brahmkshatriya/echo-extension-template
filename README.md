@@ -71,4 +71,4 @@ You need to do the following steps to publish the extension:
 - Generate a keystore file : https://developer.android.com/studio/publish/app-signing#generate-key
 - Add action secrets in the repository settings (Settings -> Secrets and variables -> Actions -> New repository secret):
     - `KEYSTORE_B64` - The base64 encoded keystore file. [How to](https://stackoverflow.com/a/70396534)
-    - `KEYSTORE_PASSWORD` - The password of the keystore file.
+    - `PASSWORD` - The password of the keystore file.
