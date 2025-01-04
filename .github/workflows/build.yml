@@ -19,15 +19,18 @@ jobs:
           java-version: 17
           cache: 'gradle'
 
-      - name: Cook Env
-        run: |
+      - name: Cook Variables from gradle.properties
+        run : |
           name=$(grep '^extName=' gradle.properties | cut -d'=' -f2)
           echo "NAME=$name Extension" >> $GITHUB_ENV
           id=$(grep '^extId=' gradle.properties | cut -d'=' -f2)
           echo "TAG=$id" >> $GITHUB_ENV
-          echo -e "## ${{ env.NAME }}\n${{ github.event.head_commit.message }}" > commit.txt
+
+      - name: Make Environment
+        run: |
           version=$( echo ${{ github.event.head_commit.id }} | cut -c1-7 )
           echo "VERSION=v$version" >> $GITHUB_ENV
+          echo -e "## ${{ env.NAME }}\n${{ github.event.head_commit.message }}" > commit.txt
           echo "APP_PATH=app/build/${{ env.TAG }}-$version.eapk" >> $GITHUB_ENV
           echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > $GITHUB_WORKSPACE/signing-key.jks
           chmod +x ./gradlew
