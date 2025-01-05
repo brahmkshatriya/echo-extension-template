@@ -63,7 +63,7 @@ jobs:
         uses: sgpublic/delete-release-action@master
         with:
           release-drop: true
-          release-keep-count: 3
+          release-keep-count: 2
           release-drop-tag: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

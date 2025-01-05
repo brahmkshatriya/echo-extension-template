@@ -28,7 +28,7 @@ val extUpdateUrl: String? by project
 val gitHash = execute("git", "rev-parse", "HEAD").take(7)
 val gitCount = execute("git", "rev-list", "--count", "HEAD").toInt()
 val verCode = gitCount
-val verName = gitHash
+val verName = "v$gitHash"
 
 tasks.register("uninstall") {
     exec {
@@ -50,7 +50,7 @@ android {
             put("type", "dev.brahmkshatriya.echo.${extType}")
             put("id", extId)
             put("class_path", "dev.brahmkshatriya.echo.extension.${extClass}")
-            put("version", "v$verName")
+            put("version", verName)
             put("version_code", verCode.toString())
             put("icon_url", extIconUrl ?: "")
             put("app_name", "Echo : $extName Extension")
