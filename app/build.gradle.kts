@@ -29,6 +29,23 @@ val gitCount = execute("git", "rev-list", "--count", "HEAD").toInt()
 val verCode = gitCount
 val verName = "v$gitHash"
 
+
+val outputDir = file("${layout.buildDirectory.asFile.get()}/generated/proguard")
+val generatedProguard = file("${outputDir}/generated-rules.pro")
+
+tasks.register("generateProguardRules") {
+    doLast {
+        outputDir.mkdirs()
+        generatedProguard.writeText(
+            "-dontobfuscate\n-keep,allowoptimization class dev.brahmkshatriya.echo.extension.$extClass"
+        )
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn("generateProguardRules")
+}
+
 tasks.register("uninstall") {
     android.run {
         execute(
@@ -67,7 +84,7 @@ android {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                generatedProguard.absolutePath
             )
         }
     }
