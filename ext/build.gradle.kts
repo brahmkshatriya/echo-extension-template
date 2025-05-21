@@ -1,4 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import java.io.IOException
 
 plugins {
     id("java-library")
@@ -90,11 +91,23 @@ tasks {
 }
 
 fun execute(vararg command: String): String {
-    val processBuilder = ProcessBuilder(*command)
-    val hashCode = command.joinToString().hashCode().toString()
-    val output = File.createTempFile(hashCode, "")
-    processBuilder.redirectOutput(output)
-    val process = processBuilder.start()
-    process.waitFor()
-    return output.readText().dropLast(1)
+    val process = ProcessBuilder(*command)
+        .redirectOutput(ProcessBuilder.Redirect.PIPE)
+        .redirectError(ProcessBuilder.Redirect.PIPE)
+        .start()
+
+    val output = process.inputStream.bufferedReader().readText()
+    val errorOutput = process.errorStream.bufferedReader().readText()
+
+    val exitCode = process.waitFor()
+
+    if (exitCode != 0) {
+        throw IOException(
+            "Command failed with exit code $exitCode. Command: ${command.joinToString(" ")}\n" +
+                    "Stdout:\n$output\n" +
+                    "Stderr:\n$errorOutput"
+        )
+    }
+
+    return output.trim()
 }
