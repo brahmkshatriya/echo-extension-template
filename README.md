@@ -5,6 +5,10 @@ so you do not have to start from scratch.
 
 ## Getting Started
 
+### 0. Before starting.  
+We'd like to inform you that there exists a full handbook that walks you step by step in very easy and direct steps to create your extension  
+This file is the `HANDBOOK.md` file found in the root of this repo, please give it a read  
+
 ### 1. you can clone this repository.
 Clone this repository and name it as you want.
 
