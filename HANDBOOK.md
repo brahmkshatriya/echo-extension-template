@@ -42,7 +42,7 @@ We can't dive straight into creating the extension without first knowing how one
 We will divide our code into segements to keep things easier to read and help others be able to contrib to your project, we will also stick to the kotlin indent style and syntax rules (because people will shit on you otherwise)  
 Your main class file should only contain declarations and overrides, you are advised to not implement any of the logic in this file but rather to call functions from other files  
 > [!NOTE]  
-> We do not have control over the style you code but please trust me on this and follow the rules I've set  
+> We do not have control over your style of code but please trust me on this and follow the rules I've set  
 
 ## Main Interfaces  
 Your main class extends some interfaces to define what it supports  
@@ -52,7 +52,8 @@ These interfaces also require you to add/override some functions to do the logic
 | `ExtensionClient` | `onExtensionSelected()` `settingItems` `setSettings` | The main interface needed by all extensions to initialize the extension and provide settings |
 | `HomeFeedClient` | `getHomeTabs()` `getHomeFeed()` | To set the home feed provider (The Home tab at the bottom nav) |
 | `SearchFeedClient` | `searchHistory` `saveQueryToHistory()` `quickSearch()` `deleteQuickSearch()` `searchTabs()` `searchFeed()` | All related search features including history handling and the search feed (The Search tab at the bottom nav) |
-| `TrackClient` | `loadTrack()` `loadStreamableMedia()` `getShelves()` | This is where the track processing happens, needed for extensions that provide tracks to play |
+| `TrackClient` | `loadTrack()` `loadStreamableMedia()` `getShelves()` | This is where the track processing happens, needed for extensions that provide tracks to play |  
+
 These are probably the options you need, we will leave the rest in a different table since they are less used and the ones above will count as the essentials  
 | Interface | Overrides | Description |
 | --- | --- | --- |
@@ -80,7 +81,7 @@ This entry is a `List<Setting>` which can be pointed to an `emptyList()`
 This entry can take multiple types of setting items: `SettingTextInput()` `SettingSwitch()` `SettingSlider()` `SettingMultipleChoice()` `SettingList()` `SettingItem()` `SettingCategory()`  
 We shall give a thorough example of all the items and their use  
 **`SettingTextInput`**: A simlpe Text input entry  
-This entry requires a title and a key, the key is what will be used as an identifier for the stored data, so that it can be queried and read, also includes an option summary for info setting and defaultValue  
+This entry requires a **title** and a **key**, the key is what will be used as an identifier for the stored data, so that it can be queried and read, also includes an optional **summary** for info setting and **defaultValue**  
 ```kotlin
 import dev.brahmkshatriya.echo.common.settings.SettingTextInput
 
@@ -88,7 +89,7 @@ val textInput= SettingTextInput(title= "title-for-the-input", key= "key-for-the-
 override val settingItems: List<Setting> = listOf(textInput)
 ```
 **`SettingSwitch()`**: An on/off togglable switch  
-This entry requires a title and key, same as previous and the optional summary and defaultValue, the data stored is a boolean  
+This entry requires a **title** and **key**, same as previous and the optional **summary** and **defaultValue**, the data stored is a **boolean**  
 ```kotlin
 import dev.brahmkshatriya.echo.common,settings.SettingSwitch
 
@@ -97,14 +98,14 @@ override val settingItems: List<Setting> = listOf(switchInput)
 ```
 **`SettingSlide()`**: A slider to choose a numerical value  
 This entry has:  
-title: set the title of the slider  
-key: the key of which the data is stored by  
-summary: a summerization of what this slider is for, good for info not needed  
-defaultValue: the default starting value, is an Int  
-from: the beginning of the range  
-to: wanna guess?  
-steps: how much to advance in each slider step  
-allowOverride: a boolean that decides if the user can use values outside the given range  
+**title**: set the title of the slider  
+**key**: the key of which the data is stored by  
+**summary**: a summerization of what this slider is for, good for info not needed  
+**defaultValue**: the default starting value, is an Int  
+**from**: the beginning of the range  
+**to**: wanna guess?  
+**steps**: how much to advance in each slider step  
+**allowOverride**: a boolean that decides if the user can use values outside the given range  
 ```kotlin
 import dev.brahmkshatriya.echo.common.settings.SettingSlider
 
@@ -113,13 +114,13 @@ override val settingItems: List<Setting> = listOf(sliderInput)
 ```
 **`SettingOnClick`**: undocumented, don't use, seems to be used to run a `Unit` (function) when clicked  
 This entry has:  
-title, key, summary, onClick: the function that runs when clicked  
+**title**, **key**, **summary**, **onClick**: the function that runs when clicked  
 **`SettingMultipleChoice()`**: A multiple choice menu that the user can select multiple items from  
 This entry has:  
-title, key, summary  
-entryTitles: A list of strings `List<String>` that holds the titles for the entries  
-entryValues: A list of strings `List<String>` that holds the values for the entries (please note that the index should match with the previous param)  
-defaultEntryIndices: A `Set<Int>` that contains the default selected indicies (aka default selected values)  
+**title**, **key**, **summary**  
+**entryTitles**: A list of strings `List<String>` that holds the titles for the entries  
+**entryValues**: A list of strings `List<String>` that holds the values for the entries (please note that the index should match with the previous param)  
+**defaultEntryIndices**: A `Set<Int>` that contains the default selected indicies (aka default selected values)  
 ```kotlin
 `import dev.brahmkshatriya.echo.common.settings.SettingMultipleChoice
 
@@ -141,7 +142,7 @@ override val settingItems: List<Setting> = listOf(listInput)
 ```
 **`SettingItem()`**: A label that shows the contents of a certain key, useful for showing the user info or for debug perhaps?  
 This entry has:
-title, key, summary (y'know the drill with these params)  
+**title**, **key**, **summary** (y'know the drill with these params)  
 ```kotlin
 import dev.brahmkshatriya.echo.common.settings.SettingItem
 
@@ -150,7 +151,7 @@ override val settingItems: List<Setting> = listOf(itemOutput)
 ```
 **`SettingCategory()`**: A category containing a list of setting items, to group some settings together  
 This entry has:  
-title, key, items: a `List<Setting>` that contains a listOf() setting items  
+**title**, **key**, **items**: a `List<Setting>` that contains a listOf() setting items  
 - `setSettings()`: NEEDED, you dont need to worry about this, it just runs when the module is initialized to provide the actual settings provider  
 ```kotlin
 private lateinit var setting: Settings // you use this and pass it to methods so that they can query the values of the keys and get settings values
