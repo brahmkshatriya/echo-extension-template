@@ -2,11 +2,8 @@
 Thanks for choosing to contribute to Echo by creating your own extension, we will aim to facilitate the process of creating the extension, unlike Shivam who expects you to read the source code for Echo to figure out how to write an extension, this easy-to-understand guide will give you the necessary details and steps to contribute with the less effort spent  
 > [!NOTE]  
 > You are still expected to have some knowledge in coding (kotlin) and creating Android projects  
-
-## Coding practices  
-It is adviced to use async code (suspended) for functions that send out a web request and return (await) the response  
-It is adviced to load the classes you need in the main class file lazily (`val api by lazy { someApiClass() }`) in which you can pass settings, but please note that lazy loading might cause some issues (for example you can instanciate a Settings object inside a lazy loaded class, you'll need to pass a loaded settings object instead)  
-It is advised to use modularization wherever possible to help readabily and shareability  
+> [!NOTE]
+> This handbook does not try to cover the entire extension API and you should refer to javadoc for more insight, we will only walk you through the basics so that you can get the hang of things quick  
 
 ## Setting up your building system  
 **For people who use Android Studio please skip this part**  
@@ -35,7 +32,7 @@ pass=$(cat "/home/nekomimi/.keystore/pass.txt")
 Make sure to replace the actual location of the keystore file and password file to your own location  
 To disable debugging features when building:  
 - Open `app/build.gradle.kts`  
-- Inside the `Android{}` scope, find `buildTypes`, generally you'll only find an `all` entry, inside it (`all`) add `isMinifyEnabled = true` inside the scope  
+- Inside the `android {}` scope, find `buildTypes`, generally you'll only find an `all` entry, inside it (`all`) add `isMinifyEnabled = true` inside the scope  
 
 ## What is an extension ?  
 We can't dive straight into creating the extension without first knowing how one works, apart from the main code that sets up a kotlin/Android project you start with your main class, that class extends multiple interfaces to add the features you need (lets say you want to create an extension that only does lyrics, then you'd need the LyricsClient interface)  
@@ -84,7 +81,6 @@ We shall give a thorough example of all the items and their use
 This entry requires a **title** and a **key**, the key is what will be used as an identifier for the stored data, so that it can be queried and read, also includes an optional **summary** for info setting and **defaultValue**  
 ```kotlin
 import dev.brahmkshatriya.echo.common.settings.SettingTextInput
-
 val textInput= SettingTextInput(title= "title-for-the-input", key= "key-for-the-item-query", summary= "Some help info", defaultValue= "The Default Value")
 override val settingItems: List<Setting> = listOf(textInput)
 ```
@@ -92,7 +88,6 @@ override val settingItems: List<Setting> = listOf(textInput)
 This entry requires a **title** and **key**, same as previous and the optional **summary** and **defaultValue**, the data stored is a **boolean**  
 ```kotlin
 import dev.brahmkshatriya.echo.common,settings.SettingSwitch
-
 val switchInput= SettingSwitch(title= "switch-title", key= "key-for-item-query", summary= "Some help info", defaultValue= false)
 override val settingItems: List<Setting> = listOf(switchInput)
 ```
@@ -108,7 +103,6 @@ This entry has:
 **allowOverride**: a boolean that decides if the user can use values outside the given range  
 ```kotlin
 import dev.brahmkshatriya.echo.common.settings.SettingSlider
-
 val sliderInput= SettingSlider(title= "some-title", key= "some-key", from= 0, to= 10, steps= 1)
 override val settingItems: List<Setting> = listOf(sliderInput)
 ```
@@ -122,8 +116,7 @@ This entry has:
 **entryValues**: A list of strings `List<String>` that holds the values for the entries (please note that the index should match with the previous param)  
 **defaultEntryIndices**: A `Set<Int>` that contains the default selected indicies (aka default selected values)  
 ```kotlin
-`import dev.brahmkshatriya.echo.common.settings.SettingMultipleChoice
-
+import dev.brahmkshatriya.echo.common.settings.SettingMultipleChoice
 val titles= listOf("title 1", "title 2")
 val values= listOf("value 1", "value 2")
 val multipleInput= SettingMultipleChoice(titile= "title", key= "some-key", entryTitles= titles, entryValues= values)
@@ -134,7 +127,6 @@ This entry has:
 The exact same params as `SettingMultipleChoice`  
 ```kotlin
 import dev.brahmkshatriya.echo.common.settings.SettingList
-
 val titles= listOf("title 1", "title 2")
 val values= listOf("value 1", "value 2")
 val listInput= SettingMultipleChoice(titile= "title", key= "some-key", entryTitles= titles, entryValues= values)
@@ -145,7 +137,6 @@ This entry has:
 **title**, **key**, **summary** (y'know the drill with these params)  
 ```kotlin
 import dev.brahmkshatriya.echo.common.settings.SettingItem
-
 val itemOutput= SettingItem(title= "Title", key= "some-key")
 override val settingItems: List<Setting> = listOf(itemOutput)
 ```
@@ -186,3 +177,4 @@ To go more in depth about the available methods from the `Settings` class we wil
 Available methods: `getString(key: String): String?` `putString(key: String, value: String?)` `getStringSet(key: String): Set<String>?` `putStringSet(key: String, value: Set<String>?)` `getInt(key: String): Int?` `putInt(key: String, value: Int?)` `getBoolean(key: String): Boolean?` `putBoolean(key: String, value: Boolean?)`  
 We will NOT talk about them in detail, (please just read the method name and you'll understand immediately what it does)  
 Querying and modifying keys will require a type, since the setting items themselves return a specific type (like the slider being an Int and the toggle being a bool), thus when querying or modifying a key you'll have to make sure it's the same type as the setting  
+For the methods that could return a null value (String? Int? Boolean? Set?) you'll need to handle having a null value for when the user hasnt entered a value yet and no defaultValue was set  
