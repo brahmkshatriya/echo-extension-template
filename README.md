@@ -10,7 +10,6 @@ Clone this repository and name it as you want.
 
 ### 2. Configure the [gradle.properties](gradle.properties)
 The file will have the following properties:
-- `libVersion` - The version of the Echo library, defaults to `main-SNAPSHOT`.
 - `extType` - The type of the extension you want to create. It can be `music`, `tracker`
   or `lyrics`. More information can be found
   in [`Extension<*>`](https://github.com/brahmkshatriya/echo/blob/main/common/src/main/java/dev/brahmkshatriya/echo/common/Extension.kt#L33-L43)
@@ -44,28 +43,13 @@ Here's where the fun begins. Echo checks for `Client` interfaces that your exten
 
 The best example of how to implement an extension should be the [Spotify Extension](https://github.com/brahmkshatriya/echo-spotify-extension/blob/main/ext/src/main/java/dev/brahmkshatriya/echo/extension/SpotifyExtension.kt).
 
-### 4. Making network requests
-If your extension needs to make network requests, you can use `OkHttpClient` class provided directly by Echo. For example:
-```kotlin
-class TestExtension : ExtensionClient {
-    private val client = OkHttpClient()
-
-    override suspend fun someNiceFunction() {
-        val request = Request.Builder().url("https://example.com").build()
-        val response = client.newCall(request).await()
-        println(response.body?.string())
-    }
-}
-```
-If you are using `OkHttpClient`, use the custom `await()` function for suspending the network call.
-
-### 5. Testing the extension
+### 4. Testing the extension
 There are two ways to test the extension:
 - **Local testing**: You can test the extension locally by running the tests in the [`ExtensionUnitTest`](ext/src/test/java/dev/brahmkshatriya/echo/extension/ExtensionUnitTest.kt) class.
 - **App testing**: You can test the extension in the Echo app by building & installing the `app` & then opening Echo app.
 
-### 6. Publishing the extension
-This template includes a GitHub Actions workflow that will automatically build and publish the extension to GitHub releases when you make a new commit. You can find the workflow file [here](.github/workflow/build.yml).
+### 5. Publishing the extension
+This template includes a GitHub Actions workflow that will automatically build and publish the extension to GitHub releases when you make a new commit. You can find the workflow file [here](.github/workflows/build.yml).
 You need to do the following steps to publish the extension:
 - Enable `Read & write permissions` for workflows in the repository settings (Settings -> Actions -> General -> Workflow Permissions).
 - Generate a keystore file : https://developer.android.com/studio/publish/app-signing#generate-key

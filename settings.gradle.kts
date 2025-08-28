@@ -12,10 +12,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://jitpack.io") }
     }
 }
 
-rootProject.name = "extension"
+val extName: String by settings
+rootProject.name = extName
 include(":app")
 include(":ext")
